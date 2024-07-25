@@ -1,5 +1,7 @@
-package com.example.carrotmarketbackend.User;
+package com.example.carrotmarketbackend.Filter;
 
+import com.example.carrotmarketbackend.User.CustomUser;
+import com.example.carrotmarketbackend.User.JwtUtil;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
@@ -15,7 +17,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 
 public class JwtFilter extends OncePerRequestFilter {
 
@@ -40,16 +41,16 @@ public class JwtFilter extends OncePerRequestFilter {
 
         try {
             Claims claims = JwtUtil.extractToken(jwtToken);
-            String email = claims.get("email", String.class);
             String username = claims.get("username", String.class);
+            String email = claims.get("email", String.class);
             String authoritiesStr = claims.get("authorities", String.class);
 
             if (username != null && authoritiesStr != null) {
                 var authorities = Arrays.stream(authoritiesStr.split(","))
                         .map(SimpleGrantedAuthority::new).toList();
 
-                CustomUser customUser = new CustomUser(email, "none", authorities);
-                customUser.setUsername(username);
+                CustomUser customUser = new CustomUser(username, "none", authorities);
+                customUser.setEmail(email);
 
                 UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                         customUser, null, authorities);

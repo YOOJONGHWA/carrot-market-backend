@@ -1,6 +1,6 @@
 package com.example.carrotmarketbackend.Config;
 
-import com.example.carrotmarketbackend.User.JwtFilter;
+import com.example.carrotmarketbackend.Filter.JwtFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -29,7 +29,8 @@ public class SecurityConfig {
         );
 
         http.authorizeHttpRequests((authorize) ->
-                authorize.requestMatchers("/**").permitAll()
+                authorize.requestMatchers("/api/auth/me").authenticated()
+                        .requestMatchers("/**").permitAll()
         );
         http.formLogin((formLogin) -> formLogin.loginPage("/login")
                 .defaultSuccessUrl("/")

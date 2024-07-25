@@ -24,13 +24,14 @@ public class JwtUtil {
         CustomUser user = (CustomUser) auth.getPrincipal();
         var authorities = auth.getAuthorities().stream().map(authority -> authority.toString()).collect(Collectors.joining(","));
         String jwt = Jwts.builder()
+                .claim("username", user.getUsername())
                 .claim("email", user.getEmail())
-                .claim("username", user.username)
                 .claim("authorities", authorities)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 10000)) //유효기간 10초
+                .expiration(new Date(System.currentTimeMillis() + 3600000)) //유효기간 10초
                 .signWith(key)
                 .compact();
+        System.out.println("Generated JWT: " + jwt);  // JWT 출력
         return jwt;
     }
 
@@ -40,5 +41,9 @@ public class JwtUtil {
                 .parseSignedClaims(token).getPayload();
         return claims;
     }
+
+    /*
+    *   to do jwt 를 리프레시 하는 기능도 추가하자
+    * */
 
 }

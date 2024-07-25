@@ -6,19 +6,16 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 
 import java.util.Collection;
+import java.util.List;
 
 @Getter
 @Setter
 public class CustomUser extends User {
-    public String username;
-    public String email;
-    public Long id;
-
-    public CustomUser(
-            String email,
-            String password,
-            Collection<? extends GrantedAuthority> authorities) {
-        super(email, password, authorities);
+    private Long id;
+    private String email;
+    public CustomUser(String username,
+                      String password,
+                      Collection<? extends GrantedAuthority> authorities) {
+        super(username, password, authorities);
     }
-
 }
