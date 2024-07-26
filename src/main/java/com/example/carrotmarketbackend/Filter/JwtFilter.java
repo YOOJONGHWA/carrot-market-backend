@@ -43,6 +43,7 @@ public class JwtFilter extends OncePerRequestFilter {
             Claims claims = JwtUtil.extractToken(jwtToken);
             String username = claims.get("username", String.class);
             String email = claims.get("email", String.class);
+            Long id = JwtUtil.getLongClaim(claims, "id"); // Use the helper method to get Long
             String authoritiesStr = claims.get("authorities", String.class);
 
             if (username != null && authoritiesStr != null) {
@@ -51,6 +52,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
                 CustomUser customUser = new CustomUser(username, "none", authorities);
                 customUser.setEmail(email);
+                customUser.setId(id);
 
                 UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                         customUser, null, authorities);
