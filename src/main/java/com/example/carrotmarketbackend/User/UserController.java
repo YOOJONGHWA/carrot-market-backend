@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -45,7 +44,6 @@ public class UserController {
             cookie.setHttpOnly(true); // 클라이언트 측 스크립트에서 접근 불가능
             cookie.setPath("/"); // 도메인 전체에서 쿠키 접근 가능
             cookie.setSecure(true); // HTTPS 환경에서만 전송
-            response.addCookie(cookie);
             response.addCookie(cookie);
 
             return jwt;

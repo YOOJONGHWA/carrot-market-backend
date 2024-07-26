@@ -29,4 +29,25 @@ public class PostController {
         return postService.findAll();
     }
 
+
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Post> details(@PathVariable Long id) {
+        return postService.findById(id);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Post> update(
+            @PathVariable Long id,
+            @Valid @RequestBody PostDto dto) {
+
+        return postService.update(id,dto);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Post> delete(@PathVariable Long id) {
+
+        return  postService.delete(id);
+
+    }
 }

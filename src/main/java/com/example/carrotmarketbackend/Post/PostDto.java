@@ -41,4 +41,6 @@ public class PostDto {
     private BigDecimal longitude;
 
     private String image;
+
+    private String authorUsername;
 }
