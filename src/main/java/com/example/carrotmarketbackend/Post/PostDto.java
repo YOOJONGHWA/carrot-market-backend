@@ -20,7 +20,10 @@ public class PostDto {
     private Long id;
 
     @NotNull
-    private String authorId;
+    private Long authorId;
+
+    @NotBlank
+    private String authorUsername;
 
     @NotBlank
     private String title;
@@ -42,5 +45,4 @@ public class PostDto {
 
     private String image;
 
-    private String authorUsername;
 }

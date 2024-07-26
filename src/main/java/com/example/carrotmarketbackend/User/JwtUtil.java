@@ -6,9 +6,8 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-
+import java.util.Date;
 import javax.crypto.SecretKey;
-import java.sql.Date;
 import java.util.stream.Collectors;
 
 @Component
@@ -26,6 +25,7 @@ public class JwtUtil {
         String jwt = Jwts.builder()
                 .claim("username", user.getUsername())
                 .claim("email", user.getEmail())
+                .claim("id", user.getId())
                 .claim("authorities", authorities)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + 3600000)) //유효기간 10초
@@ -37,9 +37,20 @@ public class JwtUtil {
 
     // JWT 까주는 함수
     public static Claims extractToken(String token) {
-        Claims claims = Jwts.parser().verifyWith(key).build()
+        Claims claims = Jwts.parser()
+                .verifyWith(key)
+                .build()
                 .parseSignedClaims(token).getPayload();
         return claims;
+    }
+
+    // Type Conversion Helper
+    public static Long getLongClaim(Claims claims, String claimKey) {
+        Object claimValue = claims.get(claimKey);
+        if (claimValue instanceof Number) {
+            return ((Number) claimValue).longValue();
+        }
+        return null;
     }
 
     /*

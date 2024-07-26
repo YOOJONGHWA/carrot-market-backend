@@ -44,11 +44,9 @@ public class Post {
 
     private String image;
 
-    private String authorUsername;
-
     @Column(updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
-    private LocalDateTime updatedAt;
+    private String authorUsername;
 
 }

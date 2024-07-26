@@ -27,8 +27,7 @@ public class PostService {
     public ResponseEntity<StatusEnum> save(PostDto dto) {
 
         // username을 기반으로 User 객체 조회
-        Optional<User> user = userRepository.findByUsername(dto.getAuthorId());
-        System.out.println(dto.getAuthorId());
+        Optional<User> user = userRepository.findById(dto.getAuthorId());
 
         if (user.isPresent()) {
             // Post 객체 생성 및 저장
@@ -40,7 +39,7 @@ public class PostService {
                     .longitude(dto.getLongitude())
                     .image(dto.getImage())
                     .createdAt(LocalDateTime.now())
-                    .authorUsername(dto.getAuthorId())
+                    .authorUsername(user.get().getUsername())
                     .author(user.get()) // User 객체 설정
                     .build();
             postRepository.save(post);
@@ -68,21 +67,19 @@ public class PostService {
     public ResponseEntity<Post> update(Long id, PostDto dto) {
 
         // 기존 게시물 조회
-        Optional<Post> existingPostOptional = postRepository.findById(id);
-        if (!existingPostOptional.isPresent()) {
+        Optional<Post> post = postRepository.findById(id);
+        if (!post.isPresent()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
         // 게시물 수정
-        Post existingPost = existingPostOptional.get();
-        log.info(String.valueOf(existingPost.getAuthor().getUsername()));
-        log.info(dto.getAuthorId());
+        Post existingPost = post.get();
+
         // 작성자 검증
         Optional<User> userOptional = userRepository.findByUsername(dto.getAuthorUsername());
         if (!userOptional.isPresent()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-        System.out.println(userOptional);
         User user = userOptional.get();
 
         // 작성자와 현재 게시물 작성자가 동일한지 확인
