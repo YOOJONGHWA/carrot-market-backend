@@ -1,5 +1,6 @@
 package com.example.carrotmarketbackend.Post;
 
+import com.example.carrotmarketbackend.S3.S3Service;
 import com.example.carrotmarketbackend.User.StatusEnum;
 import com.example.carrotmarketbackend.User.User;
 import com.example.carrotmarketbackend.User.UserRepository;
@@ -22,6 +23,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final S3Service s3Service;
 
     @Transactional
     public ResponseEntity<StatusEnum> save(PostDto dto) {
@@ -93,16 +95,35 @@ public class PostService {
         existingPost.setPrice(dto.getPrice());
         existingPost.setLatitude(dto.getLatitude());
         existingPost.setLongitude(dto.getLongitude());
-        existingPost.setImage(dto.getImage());
-        existingPost.setCreatedAt(LocalDateTime.now());
 
+        // 이미지 처리
+        String oldImage = existingPost.getImage();
+        String newImage = dto.getImage();
+        if (!oldImage.equals(newImage)) {
+            // 이미지 변경 시 처리
+            s3Service.createPresignedUrlForUpdate(oldImage, newImage);
+            existingPost.setImage(newImage);
+        }
+
+        existingPost.setCreatedAt(LocalDateTime.now());
         postRepository.save(existingPost);
 
         return ResponseEntity.ok(existingPost);
     }
 
     public ResponseEntity<Post> delete(Long id) {
+
+        Optional<Post> post = postRepository.findById(id);
+
+        String imagePath = post.get().getImage();
+        log.info("Deleting post image: " + imagePath);
         postRepository.deleteById(id);
+
+        // 이미지 삭제 (이미지 경로가 null이 아닌 경우에만 삭제)
+        if (imagePath != null && !imagePath.isEmpty()) {
+            s3Service.createPresignedUrlForDelete(imagePath);
+        }
+
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 }
