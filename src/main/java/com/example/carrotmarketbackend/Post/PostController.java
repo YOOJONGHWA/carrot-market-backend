@@ -1,5 +1,6 @@
 package com.example.carrotmarketbackend.Post;
 
+import com.example.carrotmarketbackend.S3.S3Service;
 import com.example.carrotmarketbackend.User.StatusEnum;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -16,6 +17,7 @@ import java.util.List;
 public class PostController {
 
     private final PostService postService;
+    private final S3Service s3Service;
 
     @PostMapping
     public ResponseEntity<StatusEnum> post(@Valid @RequestBody PostDto dto) {
@@ -50,4 +52,12 @@ public class PostController {
         return  postService.delete(id);
 
     }
+
+    @GetMapping("/presigned-url")
+    public ResponseEntity<String> getURL(@RequestParam String filename){
+        String presignedUrl = s3Service.createPresignedUrlForUpload("test/" + filename);
+
+        return ResponseEntity.ok(presignedUrl);
+    }
+    
 }
