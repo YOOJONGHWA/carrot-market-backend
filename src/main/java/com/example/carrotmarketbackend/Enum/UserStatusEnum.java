@@ -1,8 +1,8 @@
-package com.example.carrotmarketbackend.User;
+package com.example.carrotmarketbackend.Enum;
 
 import lombok.Getter;
 @Getter
-public enum  StatusEnum  {
+public enum UserStatusEnum {
 
     OK(200, "OK"),
     BAD_REQUEST(400, "BAD_REQUEST"),
@@ -10,12 +10,12 @@ public enum  StatusEnum  {
     INTERNAL_SERER_ERROR(500, "INTERNAL_SERVER_ERROR"),
     USER_NOT_FOUND(402, "USER_NOT_FOUND"),;
 
-    int statusCode;
-    String code;
+    public final int statusCode;
+    public final String message;
 
-    StatusEnum(int statusCode, String code) {
+    UserStatusEnum(int statusCode, String code) {
         this.statusCode = statusCode;
-        this.code = code;
+        this.message = code;
     }
 }
 

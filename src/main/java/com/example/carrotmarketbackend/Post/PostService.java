@@ -1,7 +1,7 @@
 package com.example.carrotmarketbackend.Post;
 
 import com.example.carrotmarketbackend.S3.S3Service;
-import com.example.carrotmarketbackend.User.StatusEnum;
+import com.example.carrotmarketbackend.Enum.UserStatusEnum;
 import com.example.carrotmarketbackend.User.User;
 import com.example.carrotmarketbackend.User.UserRepository;
 import jakarta.transaction.Transactional;
@@ -26,7 +26,7 @@ public class PostService {
     private final S3Service s3Service;
 
     @Transactional
-    public ResponseEntity<StatusEnum> save(PostDto dto) {
+    public ResponseEntity<UserStatusEnum> save(PostDto dto) {
 
         // username을 기반으로 User 객체 조회
         Optional<User> user = userRepository.findById(dto.getAuthorId());
@@ -45,9 +45,9 @@ public class PostService {
                     .author(user.get()) // User 객체 설정
                     .build();
             postRepository.save(post);
-            return ResponseEntity.status(HttpStatus.CREATED).body(StatusEnum.OK);
+            return ResponseEntity.status(HttpStatus.CREATED).body(UserStatusEnum.OK);
         } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(StatusEnum.USER_NOT_FOUND);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(UserStatusEnum.USER_NOT_FOUND);
         }
     }
 

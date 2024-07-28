@@ -1,5 +1,6 @@
 package com.example.carrotmarketbackend.User;
 
+import com.example.carrotmarketbackend.Enum.UserStatusEnum;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -10,6 +11,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
@@ -22,7 +24,7 @@ public class UserController {
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
 
     @PostMapping("/signup")
-    public ResponseEntity<StatusEnum> signup(@Valid @RequestBody UserDto dto) {
+    public ResponseEntity<UserStatusEnum> signup(@Valid @RequestBody UserDto dto) {
 
         return userService.save(dto);
 
