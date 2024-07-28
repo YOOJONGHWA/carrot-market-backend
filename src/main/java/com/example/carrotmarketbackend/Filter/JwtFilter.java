@@ -2,7 +2,6 @@ package com.example.carrotmarketbackend.Filter;
 
 import com.example.carrotmarketbackend.User.CustomUser;
 import com.example.carrotmarketbackend.User.JwtUtil;
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -40,11 +39,10 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         try {
-            Claims claims = JwtUtil.extractToken(jwtToken);
-            String username = claims.get("username", String.class);
-            String email = claims.get("email", String.class);
-            Long id = JwtUtil.getLongClaim(claims, "id"); // Use the helper method to get Long
-            String authoritiesStr = claims.get("authorities", String.class);
+            String username = JwtUtil.extractToken(jwtToken).get("username", String.class);
+            String email = JwtUtil.extractToken(jwtToken).get("email", String.class);
+            Long id = JwtUtil.getLongClaim(JwtUtil.extractToken(jwtToken), "id");
+            String authoritiesStr = JwtUtil.extractToken(jwtToken).get("authorities", String.class);
 
             if (username != null && authoritiesStr != null) {
                 var authorities = Arrays.stream(authoritiesStr.split(","))
@@ -59,12 +57,11 @@ public class JwtFilter extends OncePerRequestFilter {
 
                 authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-                System.out.println(authenticationToken + " ?>>>>");
             }
         } catch (ExpiredJwtException ex) {
-            System.out.println("JWT 토큰 유효기간 만료: " + ex.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT 토큰 유효기간이 만료되었습니다.");
         } catch (Exception e) {
-            System.out.println("JWT 토큰 처리 중 오류 발생: " + e.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT 토큰 처리 중 오류가 발생하였습니다.");
         }
 
         filterChain.doFilter(request, response);

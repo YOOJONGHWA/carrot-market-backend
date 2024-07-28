@@ -1,9 +1,9 @@
 package com.example.carrotmarketbackend.User;
 
+import com.example.carrotmarketbackend.Enum.UserStatusEnum;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +16,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public ResponseEntity<StatusEnum> save(UserDto dto) {
+    public ResponseEntity<UserStatusEnum> save(UserDto dto) {
 
         User user = User.builder()
                 .username(dto.getUsername())
@@ -27,7 +27,7 @@ public class UserService {
                 .createdAt(LocalDateTime.now())
                 .build();
         userRepository.save(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(StatusEnum.OK);
+        return ResponseEntity.status(HttpStatus.CREATED).body(UserStatusEnum.OK);
 
     }
 

@@ -1,6 +1,7 @@
 package com.example.carrotmarketbackend.S3;
 
-import com.example.carrotmarketbackend.Exception.S3ExceptionWrapper;
+import com.example.carrotmarketbackend.Enum.S3statusEnum;
+import com.example.carrotmarketbackend.Exception.S3ExceptionHandler;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.*;
@@ -35,13 +36,13 @@ public class S3Service {
                     .build();
             return s3Presigner.presignPutObject(preSignRequest).url().toString();
         } catch (S3Exception e) {
-            throw new S3ExceptionWrapper(S3statusEnum.UPLOAD_FAIILE, e);
+            throw new S3ExceptionHandler(S3statusEnum.UPLOAD_FAIL, e);
         } catch (SdkClientException e) {
-            throw new S3ExceptionWrapper(S3statusEnum.INTERNAL_SERER_ERROR, e);
+            throw new S3ExceptionHandler(S3statusEnum.INTERNAL_SERVER_ERROR, e);
         }
     }
 
-    public String createPresignedUrlForUpdate(String oldPath, String newPath) {
+    public void createPresignedUrlForUpdate(String oldPath, String newPath) {
         try {
             // 새로운 파일을 업로드할 서명된 URL 생성
             String uploadUrl = createPresignedUrlForUpload(newPath);
@@ -49,9 +50,8 @@ public class S3Service {
             // 기존 파일을 삭제
             createPresignedUrlForDelete(oldPath);
 
-            return uploadUrl;
-        } catch (Exception e) {
-            throw new S3ExceptionWrapper(S3statusEnum.INTERNAL_SERER_ERROR, e);
+        } catch (S3Exception e) {
+            throw new S3ExceptionHandler(S3statusEnum.INTERNAL_SERVER_ERROR, e);
         }
     }
 
@@ -63,9 +63,8 @@ public class S3Service {
                     .key(imagePath)
                     .build();
             s3Client.deleteObject(deleteObjectRequest);
-            System.out.println("Successfully deleted object: " + imagePath);
         } catch (S3Exception e) {
-            throw new S3ExceptionWrapper(S3statusEnum.INTERNAL_SERER_ERROR, e);
+            throw new S3ExceptionHandler(S3statusEnum.INTERNAL_SERVER_ERROR, e);
         }
     }
 
@@ -74,7 +73,7 @@ public class S3Service {
         try {
             return new URL(url).getPath().substring(1); // URL에서 '/'를 제거하여 키를 추출
         } catch (MalformedURLException e) {
-            throw new S3ExceptionWrapper(S3statusEnum.INVAILD_URL, e);
+            throw new S3ExceptionHandler(S3statusEnum.INVALID_URL, e);
         }
     }
 }
