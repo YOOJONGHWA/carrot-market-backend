@@ -59,7 +59,12 @@ public class JwtFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             }
         } catch (ExpiredJwtException ex) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT 토큰 유효기간이 만료되었습니다.");
+            // 만료된 토큰을 이용하여 새 토큰 발급
+            String refreshToken = JwtUtil.refreshToken(jwtToken);
+            Cookie cookie = JwtUtil.createJwtCookie(refreshToken); // 유틸리티 메서드 사용
+            response.addCookie(cookie);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, " 새 토큰이 발급되었습니다.");
+            return;
         } catch (Exception e) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT 토큰 처리 중 오류가 발생하였습니다.");
         }
