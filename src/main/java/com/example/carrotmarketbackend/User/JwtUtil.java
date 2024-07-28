@@ -8,6 +8,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.Cookie;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class JwtUtil {
 
     private static final long EXPIRATION_TIME = 3600000; // 1시간
+    private static final long EXPIRATION_COOKIE_TIME = 3600000; // 1시간
 
     private static String secretKey;
 
@@ -97,5 +99,14 @@ public class JwtUtil {
         catch (JwtException | IllegalArgumentException ex){
             throw new JwtExceptionHandler(JwtEnum.JWT_PROCESSING_ERROR, ex);
         }
+    }
+
+    public static Cookie createJwtCookie(String token) {
+        Cookie cookie = new Cookie("jwt", token);
+        cookie.setMaxAge((int) EXPIRATION_COOKIE_TIME); // 쿠키의 유효 시간 (1시간)
+        cookie.setHttpOnly(true); // 클라이언트 측 스크립트에서 접근 불가능
+        cookie.setPath("/"); // 도메인 전체에서 쿠키 접근 가능
+        cookie.setSecure(true); // HTTPS 환경에서만 전송
+        return cookie;
     }
 }

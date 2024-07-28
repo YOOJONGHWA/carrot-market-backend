@@ -41,12 +41,10 @@ public class UserController {
             var jwt = JwtUtil.createToken(SecurityContextHolder.getContext().getAuthentication());
             System.out.println(jwt);
 
-            Cookie cookie = new Cookie("jwt", jwt);
-            cookie.setMaxAge(3600); // 쿠키의 유효 시간 (1시간)
-            cookie.setHttpOnly(true); // 클라이언트 측 스크립트에서 접근 불가능
-            cookie.setPath("/"); // 도메인 전체에서 쿠키 접근 가능
-            cookie.setSecure(true); // HTTPS 환경에서만 전송
+
+            Cookie cookie = JwtUtil.createJwtCookie(jwt); // 유틸리티 메서드 사용
             response.addCookie(cookie);
+
 
             return jwt;
         } catch (Exception e) {
