@@ -22,7 +22,6 @@ public class PostDto {
     @NotNull
     private Long authorId;
 
-    @NotBlank
     private String authorUsername;
 
     @NotBlank

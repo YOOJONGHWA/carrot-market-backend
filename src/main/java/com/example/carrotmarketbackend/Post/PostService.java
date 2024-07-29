@@ -104,6 +104,9 @@ public class PostService {
             s3Service.createPresignedUrlForUpdate(oldImage, newImage);
             existingPost.setImage(newImage);
         }
+        else {
+            existingPost.setImage(null);
+        }
 
         existingPost.setCreatedAt(LocalDateTime.now());
         postRepository.save(existingPost);

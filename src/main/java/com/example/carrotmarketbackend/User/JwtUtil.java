@@ -10,20 +10,23 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.Cookie;
 import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-import java.util.Date;
+
 import javax.crypto.SecretKey;
+import java.io.IOException;
+import java.util.Date;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 @AllArgsConstructor
 public class JwtUtil {
 
     private static final long EXPIRATION_TIME = 3600000; // 1시간
-    private static final long EXPIRATION_COOKIE_TIME = 3600000; // 1시간
+    private static final long EXPIRATION_COOKIE_TIME = 3600; // 1시간
 
     private static String secretKey;
 
@@ -36,38 +39,50 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
     }
 
-    // JWT 만들어주는 함수
+    // JWT 생성 메서드
     public static String createToken(Authentication auth) {
         CustomUser user = (CustomUser) auth.getPrincipal();
-        var authorities = auth.getAuthorities().stream().map(authority -> authority.toString()).collect(Collectors.joining(","));
+        var authorities = auth.getAuthorities().stream().map(Object::toString).collect(Collectors.joining(","));
+        long now = System.currentTimeMillis();
+        Date issuedAt = new Date(now);
+        Date expiration = new Date(now + EXPIRATION_TIME);
+
         String jwt = Jwts.builder()
                 .claim("username", user.getUsername())
                 .claim("email", user.getEmail())
                 .claim("id", user.getId())
                 .claim("authorities", authorities)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME)) //유효기간 10초
+                .setIssuedAt(issuedAt)
+                .setExpiration(expiration)
                 .signWith(getSecretKey())
                 .compact();
-        System.out.println("Generated JWT: " + jwt);  // JWT 출력
+
+        log.info("Generated JWT: {}", jwt);
+        log.info("Issued at: {}", issuedAt);
+        log.info("Expires at: {}", expiration);
         return jwt;
     }
 
-    // JWT 까주는 함수
+    // JWT 파싱 메서드
     public static Claims extractToken(String token) {
         try {
-            return Jwts.parser()
-                    .verifyWith(getSecretKey())
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(getSecretKey())
                     .build()
-                    .parseSignedClaims(token).getPayload();
-        }
-        catch (ExpiredJwtException ex){
-            throw new JwtExceptionHandler(JwtEnum.JWT_EXPIRED,ex);
-        }
-        catch (JwtException | IllegalArgumentException ex){
-            throw new JwtExceptionHandler(JwtEnum.JWT_PROCESSING_ERROR, ex);
-        }
+                    .parseClaimsJws(token)
+                    .getBody();
 
+            log.info("JWT Issued At: {}", claims.getIssuedAt());
+            log.info("JWT Expires At: {}", claims.getExpiration());
+            log.info("Current Server Time: {}", new Date(System.currentTimeMillis()));
+
+            return claims;
+
+        } catch (ExpiredJwtException ex) {
+            return ex.getClaims();
+        } catch (JwtException | IllegalArgumentException ex) {
+            throw new JwtExceptionHandler(JwtEnum.JWT_PROCESSING_ERROR);
+        }
     }
 
     // Type Conversion Helper
@@ -79,25 +94,19 @@ public class JwtUtil {
         return null;
     }
 
-    /*
-    *   to do jwt 를 리프레시 하는 기능도 추가하자
-    * */
     // JWT 리프레시 메서드
-    public static String refreshToken(String token) {
+    public static String refreshToken(String token)  {
         try {
             Claims claims = extractToken(token);
             return Jwts.builder()
-                    .claims(claims)
-                    .issuedAt(new Date(System.currentTimeMillis()))
-                    .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                    .setClaims(claims)
+                    .setIssuedAt(new Date(System.currentTimeMillis()))
+                    .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                     .signWith(getSecretKey())
                     .compact();
         }
-        catch (ExpiredJwtException ex){
-            throw new JwtExceptionHandler(JwtEnum.JWT_EXPIRED,ex);
-        }
-        catch (JwtException | IllegalArgumentException ex){
-            throw new JwtExceptionHandler(JwtEnum.JWT_PROCESSING_ERROR, ex);
+        catch (JwtException | IllegalArgumentException ex) {
+            throw new JwtExceptionHandler(JwtEnum.JWT_PROCESSING_ERROR);
         }
     }
 
