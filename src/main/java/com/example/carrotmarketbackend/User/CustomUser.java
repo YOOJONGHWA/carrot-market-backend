@@ -18,4 +18,5 @@ public class CustomUser extends User {
                       Collection<? extends GrantedAuthority> authorities) {
         super(username, password, authorities);
     }
+
 }

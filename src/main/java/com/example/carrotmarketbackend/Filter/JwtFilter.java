@@ -1,13 +1,17 @@
 package com.example.carrotmarketbackend.Filter;
 
+import com.example.carrotmarketbackend.Enum.JwtEnum;
 import com.example.carrotmarketbackend.User.CustomUser;
 import com.example.carrotmarketbackend.User.JwtUtil;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,7 +20,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Date;
 
+@Slf4j
 public class JwtFilter extends OncePerRequestFilter {
 
     @Override
@@ -39,10 +45,24 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         try {
-            String username = JwtUtil.extractToken(jwtToken).get("username", String.class);
-            String email = JwtUtil.extractToken(jwtToken).get("email", String.class);
-            Long id = JwtUtil.getLongClaim(JwtUtil.extractToken(jwtToken), "id");
-            String authoritiesStr = JwtUtil.extractToken(jwtToken).get("authorities", String.class);
+            Claims claims = JwtUtil.extractToken(jwtToken);
+            if (claims == null) {
+                log.error("Claims could not be extracted from JWT.");
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT Claims could not be extracted.");
+                return;
+            }
+
+            String username = claims.get("username", String.class);
+            String email = claims.get("email", String.class);
+            Long id = JwtUtil.getLongClaim(claims, "id");
+            String authoritiesStr = claims.get("authorities", String.class);
+
+            Date issuedAt = claims.getIssuedAt();
+            Date expiration = claims.getExpiration();
+
+            log.info("JWT Issued At: {}", issuedAt);
+            log.info("JWT Expires At: {}", expiration);
+            log.info("Current Server Time: {}", new Date(System.currentTimeMillis()));
 
             if (username != null && authoritiesStr != null) {
                 var authorities = Arrays.stream(authoritiesStr.split(","))
@@ -59,16 +79,14 @@ public class JwtFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             }
         } catch (ExpiredJwtException ex) {
-            // 만료된 토큰을 이용하여 새 토큰 발급
-            String refreshToken = JwtUtil.refreshToken(jwtToken);
-            Cookie cookie = JwtUtil.createJwtCookie(refreshToken); // 유틸리티 메서드 사용
-            response.addCookie(cookie);
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, " 새 토큰이 발급되었습니다.");
+            log.error("JWT Token is expired: {}", ex.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT Token has expired.");
             return;
-        } catch (Exception e) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT 토큰 처리 중 오류가 발생하였습니다.");
+        } catch (JwtException | IllegalArgumentException ex) {
+            log.error("JWT Token processing error: {}", ex.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT Token processing error.");
+            return;
         }
-
         filterChain.doFilter(request, response);
     }
 }

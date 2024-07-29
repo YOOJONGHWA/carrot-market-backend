@@ -6,11 +6,11 @@ import lombok.Getter;
 @Getter
 public class JwtExceptionHandler extends RuntimeException {
 
-    private final JwtEnum jwtEnum;
+    private final JwtEnum error;
 
-    public JwtExceptionHandler(JwtEnum statusEnum, Throwable cause) {
-        super(cause);
-        this.jwtEnum = statusEnum;
+    public JwtExceptionHandler(JwtEnum error) {
+        super(error.getMessage());
+        this.error = error;
     }
 
 }
