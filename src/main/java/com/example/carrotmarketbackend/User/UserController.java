@@ -1,9 +1,9 @@
 package com.example.carrotmarketbackend.User;
 
-import com.example.carrotmarketbackend.Enum.JwtEnum;
 import com.example.carrotmarketbackend.Enum.UserStatusEnum;
-import com.example.carrotmarketbackend.Exception.JwtExceptionHandler;
-import io.jsonwebtoken.Claims;
+import com.example.carrotmarketbackend.RefreshToken.RefreshToken;
+import com.example.carrotmarketbackend.RefreshToken.RefreshTokenRequest;
+import com.example.carrotmarketbackend.RefreshToken.TokenResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -11,10 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
@@ -24,75 +21,47 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
-    private final AuthenticationManagerBuilder authenticationManagerBuilder;
 
     @PostMapping("/signup")
     public ResponseEntity<UserStatusEnum> signup(@Valid @RequestBody UserDto dto) {
-
         return userService.save(dto);
-
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> loginJwt(@RequestBody UserDto dto, HttpServletResponse response) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletResponse response) {
         try {
+            TokenResponse tokenResponse = userService.login(request.getEmail(), request.getPassword(), response);
+            log.info("getAccessToken returned: {}", tokenResponse.getAccessToken());
+            return ResponseEntity.ok(tokenResponse.getAccessToken()); // 엑세스 토큰만 응답으로 반환
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("잘못된 요청입니다: " + e.getMessage());
+        }
+    }
 
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(dto.getEmail(), dto.getPassword());
-            var auth = authenticationManagerBuilder.getObject().authenticate(authToken);
-            SecurityContextHolder.getContext().setAuthentication(auth);
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshAccessToken(@RequestBody RefreshTokenRequest request, HttpServletResponse response) {
+        try {
+            String refreshToken = request.getRefreshToken();
+            if (refreshToken == null || refreshToken.trim().isEmpty()) {
+                throw new RuntimeException("Refresh token is missing or empty");
+            }
+            String newAccessToken = userService.refreshAccessToken(refreshToken);
 
-            var jwt = JwtUtil.createToken(SecurityContextHolder.getContext().getAuthentication());
+            // 새로운 액세스 토큰을 쿠키에 저장
+            Cookie accessTokenCookie = JwtUtil.createJwtCookie(newAccessToken);
+            response.addCookie(accessTokenCookie);
 
-            Cookie cookie = JwtUtil.createJwtCookie(jwt);
-            response.addCookie(cookie);
-
-            return ResponseEntity.ok().body(jwt);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("서버오류");
+            return ResponseEntity.ok(newAccessToken);
+        } catch (RuntimeException e) {
+            log.info("refresh returned: {}",request.getRefreshToken());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("리프레시 토큰 오류: " + e.getMessage());
         }
     }
 
     @GetMapping("/me")
-    public CustomUser getCurrentUser() {
-        // 현재 인증된 사용자 정보를 SecurityContext에서 가져오기
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof CustomUser) {
-            return (CustomUser) authentication.getPrincipal();
-        }
-        throw new RuntimeException("사용자 정보가 없습니다.");
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+        CustomUser user = (CustomUser) authentication.getPrincipal();
+        return ResponseEntity.ok(user);
     }
-
-
-    @PostMapping("/refresh-token")
-    public ResponseEntity<?> refreshToken(String refreshToken, HttpServletResponse response) {
-        try {
-            if (refreshToken == null || refreshToken.isEmpty()) {
-                throw new JwtExceptionHandler(JwtEnum.INVALID_REFRESH_TOKEN);
-            }
-
-            Claims claims = JwtUtil.extractToken(refreshToken);
-            if (claims == null) {
-                throw new JwtExceptionHandler(JwtEnum.INVALID_REFRESH_TOKEN);
-            }
-
-            String email = claims.get("email", String.class);
-            if (email == null) {
-                throw new JwtExceptionHandler(JwtEnum.INVALID_REFRESH_TOKEN);
-            }
-
-            final String newJwt = JwtUtil.refreshToken(refreshToken);
-            Cookie jwtCookie = JwtUtil.createJwtCookie(newJwt);
-            response.addCookie(jwtCookie);
-
-            return ResponseEntity.ok(newJwt);
-        } catch (JwtExceptionHandler e) {
-            return ResponseEntity.status(e.getError().getStatus()).body(e.getError().getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(JwtEnum.JWT_PROCESSING_ERROR.getStatus()).body(JwtEnum.JWT_PROCESSING_ERROR.getMessage());
-        }
-    }
-
 
 }
