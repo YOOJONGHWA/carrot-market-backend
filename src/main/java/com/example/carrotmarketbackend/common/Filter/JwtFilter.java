@@ -1,8 +1,9 @@
-package com.example.carrotmarketbackend.Filter;
+package com.example.carrotmarketbackend.common.Filter;
 
-import com.example.carrotmarketbackend.Enum.JwtEnum;
+import com.example.carrotmarketbackend.RefreshToken.JwtUtil;
 import com.example.carrotmarketbackend.User.CustomUser;
-import com.example.carrotmarketbackend.User.JwtUtil;
+import com.example.carrotmarketbackend.common.Exception.Custom.JwtExceptionHandler;
+import com.example.carrotmarketbackend.common.Exception.JwtErrorCode;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -27,6 +28,13 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+
+        String path = request.getRequestURI();
+        if (path.equals("/api/auth/signup") || path.equals("/api/login")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         Cookie[] cookies = request.getCookies();
         String jwtToken = null;
 
@@ -48,8 +56,7 @@ public class JwtFilter extends OncePerRequestFilter {
             Claims claims = JwtUtil.extractToken(jwtToken);
             if (claims == null) {
                 log.error("Claims could not be extracted from JWT.");
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT Claims could not be extracted.");
-                return;
+                throw new JwtExceptionHandler(JwtErrorCode.INVALID_SECRET_KEY);
             }
 
             String username = claims.get("username", String.class);
@@ -80,12 +87,10 @@ public class JwtFilter extends OncePerRequestFilter {
             }
         } catch (ExpiredJwtException ex) {
             log.error("JWT Token is expired: {}", ex.getMessage());
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT Token has expired.");
-            return;
+            throw new JwtExceptionHandler(JwtErrorCode.JWT_EXPIRED);
         } catch (JwtException | IllegalArgumentException ex) {
             log.error("JWT Token processing error: {}", ex.getMessage());
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT Token processing error.");
-            return;
+            throw new JwtExceptionHandler(JwtErrorCode.JWT_PROCESSING_ERROR);
         }
         filterChain.doFilter(request, response);
     }

@@ -1,6 +1,5 @@
-package com.example.carrotmarketbackend.Exception;
+package com.example.carrotmarketbackend.S3;
 
-import com.example.carrotmarketbackend.Enum.S3statusEnum;
 import lombok.Getter;
 
 @Getter

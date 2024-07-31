@@ -1,4 +1,4 @@
-package com.example.carrotmarketbackend.Config;
+package com.example.carrotmarketbackend.common.Config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

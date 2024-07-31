@@ -1,19 +1,19 @@
 package com.example.carrotmarketbackend.User;
 
-import com.example.carrotmarketbackend.Enum.UserStatusEnum;
+import com.example.carrotmarketbackend.RefreshToken.JwtUtil;
 import com.example.carrotmarketbackend.RefreshToken.RefreshTokenService;
-import com.example.carrotmarketbackend.RefreshToken.TokenResponse;
-import io.jsonwebtoken.Claims;
+import com.example.carrotmarketbackend.common.Exception.Custom.UserExceptionHandler;
+import com.example.carrotmarketbackend.common.Exception.UserErrorCode;
+import com.example.carrotmarketbackend.common.dto.ApiResponse;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,70 +32,97 @@ public class UserService {
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
 
     @Transactional
-    public TokenResponse login(String email, String password, HttpServletResponse response) {
-        try {
-            // 사용자 인증
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(email, password);
-            Authentication auth = authenticationManagerBuilder.getObject().authenticate(authToken);
-            SecurityContextHolder.getContext().setAuthentication(auth);
+    public ResponseEntity<ApiResponse<LoginJwt.TokenResponse>> login(LoginJwt.LoginRequest request, HttpServletResponse response, HttpServletRequest RequestCokie) {
 
-            // 토큰 생성
-            String accessToken = JwtUtil.createToken(auth);
-            String refreshToken = JwtUtil.createRefreshToken(email);
-            log.info("Refresh token: {}", refreshToken);
-            log.info("Access token: {}", accessToken);
-            // 리프레시 토큰 데이터베이스에 저장
-            refreshTokenService.saveRefreshToken(email, refreshToken, JwtUtil.getRefreshTokenExpiryDate());
+        // 쿠키 삭제
+        Cookie[] cookies = RequestCokie.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("jwt".equals(cookie.getName())) {
+                    // 쿠키 삭제
+                    Cookie emptyCookie = JwtUtil.createEmptyJwtCookie();
+                    response.addCookie(emptyCookie);
+                    break;
+                }
+            }
+        }
 
-            // 액세스 토큰을 쿠키에 저장
-            Cookie accessTokenCookie = JwtUtil.createJwtCookie(accessToken);
-            response.addCookie(accessTokenCookie);
+        validateLoginJwtLoginRequest(request);
 
-            // 리프레시 토큰을 응답으로 반환
-            return new TokenResponse(accessToken); // 액세스 토큰만 반환
+        String email = request.getEmail();
+        String password = request.getPassword();
 
-        } catch (AuthenticationException e) {
-            throw new RuntimeException("인증 실패: " + e.getMessage());
-        } catch (Exception e) {
-            throw new RuntimeException("서버 에러: " + e.getMessage());
+        // 사용자 인증
+        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(email, password);
+        Authentication auth = authenticationManagerBuilder.getObject().authenticate(authToken);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        // 토큰 생성
+        String accessToken = JwtUtil.createToken(auth);
+        String refreshToken = JwtUtil.createRefreshToken(auth);
+        log.info("Refresh token: {}", refreshToken);
+        log.info("Access token: {}", accessToken);
+
+        // 리프레시 토큰 데이터베이스에 저장
+        refreshTokenService.saveRefreshToken(email, refreshToken, JwtUtil.getRefreshTokenExpiryDate());
+
+        // 엑세스 토큰을 쿠키에 저장
+        Cookie accessTokenCookie = JwtUtil.createJwtCookie(accessToken);
+        response.addCookie(accessTokenCookie);
+
+        // 응답 생성 및 반환
+        ApiResponse<LoginJwt.TokenResponse> tokenResponse = LoginJwt.TokenResponse.fromJwt(accessToken,refreshToken);
+
+        return ResponseEntity.ok(tokenResponse);
+    }
+
+    private void validateLoginJwtLoginRequest(LoginJwt.LoginRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UserExceptionHandler(UserErrorCode.USER_NOT_FOUND));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new UserExceptionHandler(UserErrorCode.USER_NOT_FOUND);
         }
     }
 
-    public String refreshAccessToken(String refreshToken) {
-        // 1. 리프레시 토큰 유효성 검사 및 사용자 정보 확인
-        Claims claims = JwtUtil.extractToken(refreshToken);
-        String email = claims.get("email", String.class);
+    public ResponseEntity<ApiResponse<CreateUser.Response>> save(CreateUser.Request request) {
 
-        // 2. 저장된 리프레시 토큰의 유효성을 검사
-        refreshTokenService.validateRefreshToken(email, refreshToken);
+        validateCreateUserRequest(request);
 
-        // 3. 사용자 권한 정보를 포함하여 인증 객체 생성
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new RuntimeException("User not authenticated");
-        }
-
-        // 현재 사용자의 권한을 포함하여 새로운 인증 객체 생성
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                auth.getPrincipal(),
-                null,
-                auth.getAuthorities()
-        );
-
-        // 4. 새로운 액세스 토큰 생성
-        return JwtUtil.createToken(authToken);
-    }
-
-    public ResponseEntity<UserStatusEnum> save(UserDto dto) {
+        // User 엔티티 생성 및 저장
         User user = User.builder()
-                .username(dto.getUsername())
-                .password(passwordEncoder.encode(dto.getPassword()))
-                .profileImage(dto.getProfileImage())
-                .email(dto.getEmail())
-                .bio(dto.getBio())
+                .username(request.getUsername())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .profileImage(request.getProfileImage())
+                .email(request.getEmail())
+                .bio(request.getBio())
                 .createdAt(LocalDateTime.now())
                 .build();
+
         userRepository.save(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(UserStatusEnum.OK);
+
+        // 응답 생성 및 반환
+        ApiResponse<CreateUser.Response> response = CreateUser.Response.fromEntity(user);
+        return ResponseEntity.ok(response);
+    }
+
+    private void validateCreateUserRequest(CreateUser.Request request) {
+        // 이메일 중복 검사
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new UserExceptionHandler(UserErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+
+        // 사용자 이름 중복 검사
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new UserExceptionHandler(UserErrorCode.USERNAME_ALREADY_EXISTS);
+        }
+    }
+
+    @Transactional
+    public void logout(HttpServletResponse response) {
+
+        Cookie emptyCookie = JwtUtil.createEmptyJwtCookie();
+        response.addCookie(emptyCookie);
+
     }
 }

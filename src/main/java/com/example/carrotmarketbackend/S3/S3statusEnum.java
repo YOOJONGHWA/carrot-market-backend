@@ -1,4 +1,4 @@
-package com.example.carrotmarketbackend.Enum;
+package com.example.carrotmarketbackend.S3;
 
 import lombok.Getter;
 

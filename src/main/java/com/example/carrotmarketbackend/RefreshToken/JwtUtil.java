@@ -1,5 +1,6 @@
-package com.example.carrotmarketbackend.User;
+package com.example.carrotmarketbackend.RefreshToken;
 
+import com.example.carrotmarketbackend.User.CustomUser;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.stream.Collectors;
@@ -24,11 +26,12 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class JwtUtil {
 
-    private static final long EXPIRATION_TIME = 3600000; // 1시간 (밀리초 단위)
+    private static final long EXPIRATION_TIME = 5000; // 1시간 (밀리초 단위)
     private static final long REFRESH_TOKEN_EXPIRATION_TIME = 2592000000L; // 30일 (밀리초 단위)
     private static final long EXPIRATION_COOKIE_TIME = 3600;
 
     private static String secretKey;
+    private static String refreshsecretKey;
 
 
     @Value("${jwt.secret-key}")
@@ -37,12 +40,20 @@ public class JwtUtil {
     }
 
     private static SecretKey getSecretKey() {
-        try {
-            return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
-        } catch (IllegalArgumentException e) {
-            log.error("Invalid secret key: {}", e.getMessage());
-            throw new RuntimeException("Invalid secret key", e);
-        }
+
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
+
+    }
+
+    @Value("${jwt.refresh-secret-key}")
+    private void setRefreshSecretKey(String value) {
+        refreshsecretKey = value;
+    }
+
+    private static SecretKey getRefreshsecretKey() {
+
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(refreshsecretKey));
+
     }
 
     // JWT 생성 메서드
@@ -69,49 +80,47 @@ public class JwtUtil {
         return jwt;
     }
 
-    // JWT 파싱 메서드
     public static Claims extractToken(String jwtToken) {
-        try {
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(getSecretKey().getEncoded())
-                    .build()
-                    .parseClaimsJws(jwtToken)
-                    .getBody();
 
-            log.info("JWT Issued At: {}", claims.getIssuedAt());
-            log.info("JWT Expires At: {}", claims.getExpiration());
-            log.info("Current Server Time: {}", new Date(System.currentTimeMillis()));
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSecretKey().getEncoded())
+                .setAllowedClockSkewSeconds(30) // 클락 스큐 허용
+                .build()
+                .parseClaimsJws(jwtToken)
+                .getBody();
 
-            return claims;
-        } catch (ExpiredJwtException ex) {
-            // 토큰이 만료된 경우
-            log.warn("JWT expired: {}", ex.getMessage());
-            return ex.getClaims();
-        } catch (JwtException | IllegalArgumentException ex) {
-            // JWT 처리 오류 또는 잘못된 토큰
-            log.error("JWT processing error: {}", ex.getMessage());
-            throw new JwtException("Invalid JWT token");
-        }
+        log.info("JWT Issued At: {}", claims.getIssuedAt());
+        log.info("JWT Expires At: {}", claims.getExpiration());
+        log.info("Current Server Time: {}", Date.from(Instant.now()));
+
+        return claims;
     }
 
 
     // JWT 리프레시 메서드
-    public static String createRefreshToken(String email) {
+    public static String createRefreshToken(Authentication auth) {
+
+        CustomUser user = (CustomUser) auth.getPrincipal();
+        var authorities = auth.getAuthorities().stream().map(Object::toString).collect(Collectors.joining(","));
         long now = System.currentTimeMillis();
         Date issuedAt = new Date(now);
-        Date expiration = new Date(now + REFRESH_TOKEN_EXPIRATION_TIME);
+        Date expiration = new Date(now + EXPIRATION_TIME);
 
-        String refreshToken = Jwts.builder()
-                .claim("email", email)
+        String jwt = Jwts.builder()
+                .claim("username", user.getUsername())
+                .claim("email", user.getEmail())
+                .claim("id", user.getId())
+                .claim("authorities", authorities)
                 .setIssuedAt(issuedAt)
                 .setExpiration(expiration)
-                .signWith(getSecretKey())
+                .signWith(getRefreshsecretKey())
                 .compact();
 
-        log.info("Generated Refresh Token: {}", refreshToken);
+        log.info("Generated JWT: {}", jwt);
         log.info("Issued at: {}", issuedAt);
         log.info("Expires at: {}", expiration);
-        return refreshToken;
+        return jwt;
+
     }
 
     // JWT 만료일 계산 메서드
@@ -141,6 +150,15 @@ public class JwtUtil {
             return ((Number) claimValue).longValue();
         }
         return null;
+    }
+
+    public static Cookie createEmptyJwtCookie() {
+        Cookie cookie = new Cookie("jwt", null);
+        cookie.setMaxAge(0); // 쿠키 만료 시간 설정 (0으로 설정하여 쿠키 삭제)
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setSecure(true); // HTTPS 환경에서만 전송
+        return cookie;
     }
 
 }
