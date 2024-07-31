@@ -1,12 +1,15 @@
 package com.example.carrotmarketbackend.User;
 
-import lombok.Data;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-import lombok.Builder;
 
+import com.example.carrotmarketbackend.common.validation.ValidationMessages;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
 @Data
@@ -17,19 +20,20 @@ public class UserDto {
 
     private Long id;
 
-    @NotBlank(message = "이름을 입력하세요")
+    @NotBlank(message = ValidationMessages.NAME_REQUIRED)
     private String username;
 
-    @NotBlank(message = "이메일을 입력하세요")
+    @NotBlank(message = ValidationMessages.EMAIL_REQUIRED)
     private String email;
 
-    @NotBlank(message = "비밀번호를 입력하세요")
+    @NotBlank(message = ValidationMessages.PASSWORD_REQUIRED)
+    @Size(min = 6, message = ValidationMessages.PASSWORD_MIN_LENGTH)
     private String password;
 
     private String profileImage;
 
     private String bio;
 
-    @NotNull(message = "서버 에러")
+    @NotNull(message = ValidationMessages.INTERNAL_SERVER_ERROR)
     private LocalDateTime createdAt;
 }

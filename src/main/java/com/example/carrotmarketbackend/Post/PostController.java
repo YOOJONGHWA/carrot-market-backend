@@ -1,6 +1,6 @@
 package com.example.carrotmarketbackend.Post;
 
-import com.example.carrotmarketbackend.Exception.S3ExceptionHandler;
+import com.example.carrotmarketbackend.S3.S3ExceptionHandler;
 import com.example.carrotmarketbackend.S3.S3Service;
 import com.example.carrotmarketbackend.Enum.UserStatusEnum;
 import jakarta.validation.Valid;

@@ -1,7 +1,5 @@
 package com.example.carrotmarketbackend.S3;
 
-import com.example.carrotmarketbackend.Enum.S3statusEnum;
-import com.example.carrotmarketbackend.Exception.S3ExceptionHandler;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.*;

@@ -21,7 +21,7 @@ public class RefreshToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String token;
-    private String email; // 유저와 연관된 이메일
-    private LocalDateTime  expiryDate;
+    private String email;
+    private LocalDateTime expireDate;
 
 }

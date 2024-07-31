@@ -1,15 +1,14 @@
 package com.example.carrotmarketbackend.User;
 
-import com.example.carrotmarketbackend.Enum.UserStatusEnum;
-import com.example.carrotmarketbackend.RefreshToken.RefreshToken;
-import com.example.carrotmarketbackend.RefreshToken.RefreshTokenRequest;
-import com.example.carrotmarketbackend.RefreshToken.TokenResponse;
+import com.example.carrotmarketbackend.Enum.LoginResponseStatus;
+import com.example.carrotmarketbackend.RefreshToken.JwtUtil;
+import com.example.carrotmarketbackend.common.dto.ApiResponse;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -23,43 +22,35 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/signup")
-    public ResponseEntity<UserStatusEnum> signup(@Valid @RequestBody UserDto dto) {
-        return userService.save(dto);
+    public ResponseEntity<ApiResponse<CreateUser.Response>> signup(@Valid @RequestBody CreateUser.Request request) {
+        log.info("request: {}", request);
+        return userService.save(request);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletResponse response) {
-        try {
-            TokenResponse tokenResponse = userService.login(request.getEmail(), request.getPassword(), response);
-            log.info("getAccessToken returned: {}", tokenResponse.getAccessToken());
-            return ResponseEntity.ok(tokenResponse.getAccessToken()); // 엑세스 토큰만 응답으로 반환
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("잘못된 요청입니다: " + e.getMessage());
-        }
+    public ResponseEntity<ApiResponse<LoginJwt.TokenResponse>> login(@Valid  @RequestBody LoginJwt.LoginRequest request,HttpServletRequest cookie,  HttpServletResponse response) {
+            return userService.login(request, response,cookie);
     }
 
-    @PostMapping("/refresh")
-    public ResponseEntity<?> refreshAccessToken(@RequestBody RefreshTokenRequest request, HttpServletResponse response) {
-        try {
-            String refreshToken = request.getRefreshToken();
-            if (refreshToken == null || refreshToken.trim().isEmpty()) {
-                throw new RuntimeException("Refresh token is missing or empty");
+    @PostMapping("/logout")
+    public String logout(HttpServletRequest request, HttpServletResponse response) {
+        // 쿠키 삭제
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("jwt".equals(cookie.getName())) {
+                    // 쿠키 삭제
+                    Cookie emptyCookie = JwtUtil.createEmptyJwtCookie();
+                    response.addCookie(emptyCookie);
+                    break;
+                }
             }
-            String newAccessToken = userService.refreshAccessToken(refreshToken);
-
-            // 새로운 액세스 토큰을 쿠키에 저장
-            Cookie accessTokenCookie = JwtUtil.createJwtCookie(newAccessToken);
-            response.addCookie(accessTokenCookie);
-
-            return ResponseEntity.ok(newAccessToken);
-        } catch (RuntimeException e) {
-            log.info("refresh returned: {}",request.getRefreshToken());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("리프레시 토큰 오류: " + e.getMessage());
         }
+        return "로그아웃 성성";
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+    public ResponseEntity<CustomUser> getCurrentUser(Authentication authentication) {
         CustomUser user = (CustomUser) authentication.getPrincipal();
         return ResponseEntity.ok(user);
     }
